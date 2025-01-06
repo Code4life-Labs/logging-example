@@ -1,68 +1,77 @@
-import path from "path";
-import mongoose, { Model } from "mongoose";
+// Import logger
+import { LoggerBuilder } from "src/logger";
 
-// Import classes
-import { DirReader } from "src/classes/DirReader";
+// Import utils
+import { RequestUtils } from "src/utils/request";
+import { NumberUtils } from "src/utils/number";
 
-// Import configs
-import AppConfig from "src/app.config.json";
-import DatabaseConfig from "src/db.config.json";
+const logger = new LoggerBuilder()
+  .to("task-dao")
+  .to("task-dao", { format: "string", level: "error" })
+  .build();
 
-const database = DatabaseConfig.databases[1];
-
-// Get path of endpoints folder
-const rootFolder = AppConfig.folders.databases;
-const rootPath = path.resolve(`./src/${rootFolder}/${database.name}`);
-
-const reader = new DirReader(AppConfig.unListedEndpointsDir);
-
-const uppercasedDatabaseName = database.name.toUpperCase();
-const databaseName = database.database
-  ? database.database
-  : process.env[`${uppercasedDatabaseName}_NAME`];
-const databaseUsername = database.username
-  ? database.username
-  : process.env[`${uppercasedDatabaseName}_USERNAME`];
-const databasePassword = database.password
-  ? database.password
-  : process.env[`${uppercasedDatabaseName}_PASSWORD`];
-const databaseHost = database.host
-  ? database.host
-  : process.env[`${uppercasedDatabaseName}_HOST`];
-const databaseEngine = database.engine
-  ? database.engine
-  : process.env[`${uppercasedDatabaseName}_ENGINE`];
-
-export type TaskManagerModelsType = {
-  Task: Model<any>;
-  Assignment: Model<any>;
-  TaskStatus: Model<any>;
-  TaskPriority: Model<any>;
-  TaskSize: Model<any>;
+const _dao = {
+  source: "mongoose",
 };
 
-export default async function () {
-  const models = {};
-  const connectionString = `mongodb://${databaseUsername}:${databasePassword}@${databaseHost}:27017/${databaseName}`;
+const MAX_LIMIT = 100;
+const COUNT = 1e6;
 
-  await mongoose.connect(connectionString, {
-    authSource: "admin",
-  });
+export function getTasks(req: any) {
+  const dao = {
+    method: "getTasks",
+    ..._dao,
+  };
+  const profiler = logger.startTimer();
 
-  const modelFilePaths = reader.getAllPathsToFilesSync(rootPath);
+  try {
+    if (!req) {
+      throw new Error("Request is required");
+    }
 
-  for (const modelFilePath of modelFilePaths) {
-    const modelDefault = require(modelFilePath);
+    const { limit, skip } = RequestUtils.getLimitNSkip(req);
+    const result = [];
+    const N = skip + limit;
 
-    if (!modelDefault.default)
-      throw new Error("Model should be exported as default.");
+    // If limit is 0
+    if (limit === 0) {
+      throw new Error("Limit quantity of task cannot be 0");
+    }
 
-    const model = modelDefault.default;
+    // If limit exceeds MAX_LIMIT
+    if (limit > MAX_LIMIT) {
+      throw new Error(`Limit exceeds MAX_LIMIT. Limit is ${limit}`);
+    }
 
-    // Init
-    const result = model();
-    (models as any)[result.name] = result.model;
+    // If skip + limit exceed COUNT
+    if (skip + limit > COUNT) {
+      throw new Error(
+        `Skip + limit exceeds COUNT. Total of skip & limit is ${skip + limit}`
+      );
+    }
+
+    profiler.logger.info(
+      LoggerBuilder.buildDAOLog("Request to MongoDB server", dao)
+    );
+
+    for (let i = skip; i <= N; i++) {
+      const taskId = NumberUtils.getRandom(limit, limit + skip);
+
+      result.push({
+        id: `task-${taskId}`,
+        userId: `user-${NumberUtils.getRandom(0, 1000)}`,
+        content: `This is task ${taskId}`,
+      });
+    }
+
+    // End of task
+    profiler.done(
+      LoggerBuilder.buildDAOLog(`Return task from ${skip} to ${N}`, dao)
+    );
+
+    return result;
+  } catch (error: any) {
+    logger.error(LoggerBuilder.buildDAOLog(error.message, dao));
+    return null;
   }
-
-  return models as TaskManagerModelsType;
 }

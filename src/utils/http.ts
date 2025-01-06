@@ -10,6 +10,7 @@ export type InterchangeDateType<T> = {
   code: number;
   message: string | null;
   data: T | undefined;
+  log: any | undefined;
 };
 
 export class HTTPUtils {
@@ -200,12 +201,14 @@ export class HTTPUtils {
   static generateInterchange<T>(
     code?: number,
     message?: string,
-    data?: any
+    data?: any,
+    log?: any
   ): InterchangeDateType<T> {
     return {
       code: code ? code : 0,
       message: message ? message : null,
       data: data ? data : null,
+      log: log ? log : null,
     };
   }
 }

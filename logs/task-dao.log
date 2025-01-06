@@ -1,0 +1,6 @@
+{"message":"Request to MongoDB server","dao":{"method":"getTasks","source":"mongoose"},"level":"info","source":"test-service"}
+{"message":"Return task from 10 to 15","dao":{"method":"getTasks","source":"mongoose"},"level":"info","durationMs":4,"source":"test-service"}
+{"message":"Request to MongoDB server","dao":{"method":"getTasks","source":"mongoose"},"level":"info","source":"test-service"}
+{"message":"Return task from 0 to 10","dao":{"method":"getTasks","source":"mongoose"},"level":"info","durationMs":2,"source":"test-service"}
+{"message":"Skip + limit exceeds COUNT. Total of skip & limit is 100000009","dao":{"method":"getTasks","source":"mongoose"},"level":"error","source":"test-service"}
+{"message":"Limit exceeds MAX_LIMIT. Limit is 101","dao":{"method":"getTasks","source":"mongoose"},"level":"error","source":"test-service"}

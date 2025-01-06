@@ -1,0 +1,4 @@
+{"message":"Get tasks","endpoint":{"method":"GET","url":"/tasks"},"level":"info","durationMs":5,"source":"test-service"}
+{"message":"Get tasks","endpoint":{"method":"GET","url":"/tasks"},"level":"info","durationMs":3,"source":"test-service"}
+{"message":"Cannot get tasks","endpoint":{"method":"GET","url":"/tasks"},"level":"error","source":"test-service"}
+{"message":"Cannot get tasks","endpoint":{"method":"GET","url":"/tasks"},"level":"error","source":"test-service"}
