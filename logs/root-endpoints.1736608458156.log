@@ -1,0 +1,4 @@
+{"message":"Start executing","endpoint":{"method":"GET","url":"/tasks"},"level":"info","source":"test-service"}
+{"message":"Request to MongoDB server","dao":{"method":"getTasks","source":"mongoose"},"level":"info","source":"test-service"}
+{"message":"Return task from 590 to 600","dao":{"method":"getTasks","source":"mongoose"},"level":"info","source":"test-service"}
+{"message":"Get tasks completely","endpoint":{"method":"GET","url":"/tasks"},"level":"info","durationMs":5,"source":"test-service"}

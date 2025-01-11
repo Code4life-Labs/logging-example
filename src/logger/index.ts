@@ -13,6 +13,8 @@ import { StringUtils } from "src/utils/string";
 // Import helpers
 import getSystemlog from "./helpers/get-system-log";
 import mergeLogs from "./helpers/merge-logs";
+import creatLogsDailyRotate from "./helpers/rotate";
+import generateFilename from "./helpers/generate-filename";
 
 // Import application configuration
 import AppConfig from "src/app.config.json";
@@ -94,10 +96,42 @@ export class LoggerBuilder {
   canLogToConsole!: boolean;
 
   private _transports!: winston.transport[];
+  private _transportConfigurations!: Array<any>;
 
   static LogFilePattern = "^w+\\.(log|txt)$";
   static OtherServerityLogFilePattern =
     "^w+\\.(error|warn|debug|fatal)\\.(log|txt)$";
+
+  /**
+   * Root transport, include console and file. You can use this
+   * to modify destination, format or level of transport
+   */
+  static Transports = [
+    new winston.transports.Console({
+      level: "info",
+      format: combine(
+        label({ label: AppConfig.app }),
+        timestamp(),
+        stringFormat
+      ),
+    }),
+    new winston.transports.File({
+      level: "info",
+      // Cái này cần phải xem xét lại
+      // vì mình cần nhóm file log theo timestamp (ở các level như ngày, giờ)
+      filename: path.resolve(LOG_ROOT, generateFilename("logs")),
+      format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
+    }),
+  ];
+
+  /**
+   * Root logger
+   */
+  static Logger = winston.createLogger({
+    level: "info",
+    format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
+    transports: LoggerBuilder.Transports,
+  });
 
   constructor(options: LoggerOptions = {}) {
     // Setup
@@ -106,6 +140,7 @@ export class LoggerBuilder {
       ? options.canLogToConsole
       : true;
     this._transports = [];
+    this._transportConfigurations = [];
 
     // Setup transport
     if (this.canLogToConsole) {
@@ -176,9 +211,12 @@ export class LoggerBuilder {
    */
   to(destination: string, options?: ToOptions) {
     const logFileRegex = new RegExp(LoggerBuilder.LogFilePattern);
-    let destinationFile = logFileRegex.test(destination)
-      ? destination
-      : `${destination}.log`;
+
+    if (logFileRegex.test(destination)) {
+      console.error(`Invalid name ${destination}, log file need only filename`);
+      return this;
+    }
+
     let defaultFormatFn = jsonFormat;
     let defaultLevel = "info";
 
@@ -194,22 +232,24 @@ export class LoggerBuilder {
 
       // Check format for destination file
       defaultLevel = options.level;
-      destinationFile = otherSeverityLogFileRegex.test(destination)
-        ? destination
-        : `${destination}.${defaultLevel}.log`;
     }
 
-    this._transports.push(
-      new winston.transports.File({
-        level: defaultLevel,
-        filename: path.resolve(LOG_ROOT, destinationFile),
-        format: combine(
-          label({ label: AppConfig.app }),
-          timestamp(),
-          defaultFormatFn
-        ),
-      })
-    );
+    const configuration = {
+      level: defaultLevel,
+      filename: path.resolve(
+        LOG_ROOT,
+        generateFilename(destination, defaultLevel)
+      ),
+      format: combine(
+        label({ label: AppConfig.app }),
+        timestamp(),
+        defaultFormatFn
+      ),
+    };
+
+    // Save
+    this._transportConfigurations.push(configuration);
+    this._transports.push(new winston.transports.File(configuration));
 
     return this;
   }
@@ -219,10 +259,53 @@ export class LoggerBuilder {
    * @returns
    */
   build() {
-    return winston.createLogger({
+    const _instance = winston.createLogger({
       level: this.rootLevel,
       format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
       transports: this._transports,
     });
+
+    // Create new cronjob
+    const job = creatLogsDailyRotate(_instance, this, LOG_ROOT);
+    job.start();
+
+    return _instance;
+  }
+
+  /**
+   * Use to set new update
+   * @param transports
+   */
+  setNewTransports(transports: Array<any>) {
+    // Clear transports
+    this.clearTransports();
+
+    transports.forEach((transport) => {
+      this._transports.push(transport);
+    });
+  }
+
+  /**
+   * Use to get configurations of transports
+   * @returns
+   */
+  getTransportConfigurations() {
+    return this._transportConfigurations;
+  }
+
+  /**
+   * Use to get transports
+   */
+  getTransports() {
+    return this._transports;
+  }
+
+  /**
+   * Use to clear transport
+   */
+  clearTransports() {
+    while (this._transports.length !== 0) {
+      this._transports.pop();
+    }
   }
 }
