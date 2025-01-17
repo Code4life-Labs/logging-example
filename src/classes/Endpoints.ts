@@ -196,7 +196,7 @@ export class Endpoints {
       _modules.push(handlerMeta);
     }
 
-    console.table(_modules);
+    return _modules;
   }
 
   get [Symbol.toStringTag]() {

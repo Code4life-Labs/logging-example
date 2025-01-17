@@ -32,8 +32,6 @@ export default function creatLogsDailyRotate(
         logRoot,
         generateFilename(filename, transportConfigurations[i].level)
       );
-      console.log("Filename:", filename);
-      console.log("New file path:", transportConfigurations[i].filename);
 
       logger.add(new winston.transports.File(transportConfigurations[i]));
     }

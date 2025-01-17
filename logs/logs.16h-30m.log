@@ -1,0 +1,4 @@
+{"message":"Initialize application","level":"info","source":"test-service"}
+{"message":"Setup gloabal middlewares done","level":"info","source":"test-service"}
+{"message":"Build endpoints done","level":"info","source":"test-service"}
+{"message":"Initialize application successfully, now it readies and opens to receive request.","level":"info","durationMs":521,"source":"test-service"}

@@ -15,6 +15,7 @@ const reader = new DirReader(AppConfig.unListedEndpointsDir);
 
 export default async function (appRouter: Router) {
   const endpointsFilePaths = await reader.getAllPathsToFiles(rootPath);
+  const $$ = [];
 
   for (const endpointsFilePath of endpointsFilePaths) {
     const endpointsDefault = require(endpointsFilePath);
@@ -25,6 +26,8 @@ export default async function (appRouter: Router) {
     const endpoints = endpointsDefault.default;
 
     // Build
-    endpoints.build(appRouter);
+    $$.push(await endpoints.build(appRouter));
   }
+
+  return $$;
 }

@@ -1,13 +1,8 @@
-/**
- * With this
- */
-
 import winston from "winston";
 import path from "path";
 import { URL } from "url";
 
 // Impport utils
-import { BooleanUtils } from "src/utils/boolean";
 import { StringUtils } from "src/utils/string";
 
 // Import helpers
@@ -24,7 +19,7 @@ import type { Request } from "express";
 
 const { combine, timestamp, label, printf } = winston.format;
 
-type ULogLever = "info" | "error" | "warn" | "debug" | "fatal";
+type ULogLever = "info" | "error" | "warn" | "debug";
 
 type LoggerOptions = {
   rootLevel?: ULogLever;
@@ -97,41 +92,19 @@ export class LoggerBuilder {
 
   private _transports!: winston.transport[];
   private _transportConfigurations!: Array<any>;
+  private _instance!: winston.Logger;
 
   static LogFilePattern = "^w+\\.(log|txt)$";
   static OtherServerityLogFilePattern =
     "^w+\\.(error|warn|debug|fatal)\\.(log|txt)$";
 
   /**
-   * Root transport, include console and file. You can use this
-   * to modify destination, format or level of transport
-   */
-  static Transports = [
-    new winston.transports.Console({
-      level: "info",
-      format: combine(
-        label({ label: AppConfig.app }),
-        timestamp(),
-        stringFormat
-      ),
-    }),
-    new winston.transports.File({
-      level: "info",
-      // Cái này cần phải xem xét lại
-      // vì mình cần nhóm file log theo timestamp (ở các level như ngày, giờ)
-      filename: path.resolve(LOG_ROOT, generateFilename("logs")),
-      format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
-    }),
-  ];
-
-  /**
    * Root logger
    */
-  static Logger = winston.createLogger({
-    level: "info",
-    format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
-    transports: LoggerBuilder.Transports,
-  });
+  static Logger = new LoggerBuilder()
+    .to("logs")
+    .to("logs.error", { level: "error" })
+    .build();
 
   constructor(options: LoggerOptions = {}) {
     // Setup
@@ -226,10 +199,6 @@ export class LoggerBuilder {
     }
 
     if (options && options.level && options.level !== "info") {
-      const otherSeverityLogFileRegex = new RegExp(
-        LoggerBuilder.OtherServerityLogFilePattern
-      );
-
       // Check format for destination file
       defaultLevel = options.level;
     }
@@ -259,17 +228,17 @@ export class LoggerBuilder {
    * @returns
    */
   build() {
-    const _instance = winston.createLogger({
+    this._instance = winston.createLogger({
       level: this.rootLevel,
       format: combine(label({ label: AppConfig.app }), timestamp(), jsonFormat),
       transports: this._transports,
     });
 
     // Create new cronjob
-    const job = creatLogsDailyRotate(_instance, this, LOG_ROOT);
+    const job = creatLogsDailyRotate(this._instance, this, LOG_ROOT);
     job.start();
 
-    return _instance;
+    return this._instance;
   }
 
   /**
